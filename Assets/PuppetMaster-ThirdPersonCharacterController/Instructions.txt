@@ -1,0 +1,17 @@
+Layer setup:
+
+*. Add "Character Controller", "Ragdoll" and "Ground" layers (6, 7, 8)
+*. Ignore collisions between "Default" and "Character Controller" in Physics Settings (so the ragdoll could bump into obstacles).
+
+Setting up PuppetMaster:
+
+*. Drag an instance of the character into the demo scene, use BipedRagdollCreator to convert it to a ragdoll.
+*. Add PuppetMaster to the ragdoll. Assign the original character "PlayerArmature" as "Animated Target". Set Layers in PuppetMaster. Click on "Set Up PuppetMaster".
+*. Set all ragdoll Rigidbodies to interpolate.
+*. Find the "Puppet" prefab in the project, drag it into the scene as a child of the "Behaviours" gameobject.
+*. Change the layer of the Ground object to "Ground"
+*. In BehaviourPuppet, change "Ground Layers" to "Ground"
+*. In ThirdPersonController component on the PlayerArmature, change "Ground Layers" to "Ground"
+*. Find the "Humanoid Third Person Puppet" animator controller, copy the "BehaviourPuppet" and "BehaviourFall" sub-state machines to the animator controller used by the
+demo character. Make a transition from "BehaviourPuppet" sub-state machine to the idle animation state.
+*. Add the ThirdPersonPuppet component to PlayerArmature, assign the puppet and controller fields.

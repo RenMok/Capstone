@@ -1,10 +1,10 @@
-using PlayerControls;
+using StarterAssets;
 using UnityEngine;
 
 public class VirtualInput : MonoBehaviour
 {
     [Header("Output")]
-    public PlayerInputs Inputs;
+    public StarterAssetsInputs Inputs;
 
     public void VirtualMoveInput(Vector2 virtualMoveDirection)
     {

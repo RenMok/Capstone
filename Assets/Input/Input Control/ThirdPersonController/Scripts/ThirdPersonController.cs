@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 /* Note: animations are called via the controller for both the character and capsule using animator null checks
  */
 
-namespace PlayerControls
+namespace StarterAssets
 {
     [RequireComponent(typeof(CharacterController))]
 #if ENABLE_INPUT_SYSTEM
@@ -20,7 +20,11 @@ namespace PlayerControls
         public float StandingHeight = 1.86f;
 
         [Tooltip("Height of character when crouching")]
-        public float CrouchHeight;
+        public float CrouchHeight = 1.45f;
+
+        public Vector3 CrouchCenter = new Vector3(0f, 0.72f, 0f);
+
+        public Vector3 StandingCenter = new Vector3(0f, 0.92f, 0);
 
         [Tooltip("Move speed of the character in m/s")]
         public float MoveSpeed = 2.0f;
@@ -111,14 +115,14 @@ namespace PlayerControls
         private int _animIDJump;
         private int _animIDFreeFall;
         private int _animIDMotionSpeed;
-        private int _animIDCrouching;
+        private int _animIDCrouch;
 
 #if ENABLE_INPUT_SYSTEM
         private PlayerInput _playerInput;
 #endif
         private Animator _animator;
         private CharacterController _controller;
-        private PlayerInputs _input;
+        private StarterAssetsInputs _input;
         private GameObject _mainCamera;
 
         private const float _threshold = 0.01f;
@@ -153,7 +157,7 @@ namespace PlayerControls
             
             _hasAnimator = TryGetComponent(out _animator);
             _controller = GetComponent<CharacterController>();
-            _input = GetComponent<PlayerInputs>();
+            _input = GetComponent<StarterAssetsInputs>();
 #if ENABLE_INPUT_SYSTEM
             _playerInput = GetComponent<PlayerInput>();
 #else
@@ -170,11 +174,13 @@ namespace PlayerControls
         }
         private void Crouch()
         {
-            _controller.height = _input.isCrouching ? CrouchHeight : StandingHeight;
+            _controller.height = _input.crouch ? CrouchHeight : StandingHeight;
+            _controller.center = _input.crouch ? CrouchCenter : StandingCenter;
 
             if (_hasAnimator)
             {
-                _animator.SetBool(_animIDCrouching, _input.isCrouching);
+                _animator.SetBool(_animIDCrouch, _input.crouch);
+                UnityEngine.Debug.Log("Crouching");
             }
         }
 
@@ -199,7 +205,7 @@ namespace PlayerControls
             _animIDJump = Animator.StringToHash("Jump");
             _animIDFreeFall = Animator.StringToHash("FreeFall");
             _animIDMotionSpeed = Animator.StringToHash("MotionSpeed");
-            _animIDCrouching = Animator.StringToHash("Crouching");
+            _animIDCrouch = Animator.StringToHash("Crouch");
         }
 
         private void GroundedCheck()
@@ -241,14 +247,20 @@ namespace PlayerControls
         private void Move()
         {
             // set target speed based on move speed, sprint speed and if sprint is pressed
-            float targetSpeed = _input.sprint ? SprintSpeed : (_input.isCrouching ? CrouchSpeed : MoveSpeed);
+            float targetSpeed = _input.sprint ? SprintSpeed : (_input.crouch ? CrouchSpeed : MoveSpeed);
 
 
             // a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
 
             // note: Vector2's == operator uses approximation so is not floating point error prone, and is cheaper than magnitude
             // if there is no input, set the target speed to 0
-            if (_input.move == Vector2.zero) targetSpeed = 0.0f;
+            float changeSpeed;
+            if (_input.move == Vector2.zero)
+            {
+                targetSpeed = 0.0f;
+                changeSpeed = SpeedChangeRate * 2;
+            }
+            else changeSpeed = SpeedChangeRate;
 
             // a reference to the players current horizontal velocity
             float currentHorizontalSpeed = new Vector3(_controller.velocity.x, 0.0f, _controller.velocity.z).magnitude;
@@ -263,7 +275,7 @@ namespace PlayerControls
                 // creates curved result rather than a linear one giving a more organic speed change
                 // note T in Lerp is clamped, so we don't need to clamp our speed
                 _speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed * inputMagnitude,
-                    Time.deltaTime * SpeedChangeRate);
+                    Time.deltaTime * changeSpeed);
 
                 // round speed to 3 decimal places
                 _speed = Mathf.Round(_speed * 1000f) / 1000f;
@@ -273,7 +285,7 @@ namespace PlayerControls
                 _speed = targetSpeed;
             }
 
-            _animationBlend = Mathf.Lerp(_animationBlend, targetSpeed, Time.deltaTime * SpeedChangeRate);
+            _animationBlend = Mathf.Lerp(_animationBlend, targetSpeed, Time.deltaTime * changeSpeed);
             if (_animationBlend < 0.01f) _animationBlend = 0f;
 
             // normalise input direction
@@ -285,7 +297,7 @@ namespace PlayerControls
             {
                 _targetRotation = Mathf.Atan2(inputDirection.x, inputDirection.z) * Mathf.Rad2Deg +
                                   _mainCamera.transform.eulerAngles.y;
-                float rotationSpeed = _input.isCrouching ? CrouchRotationTime : RotationSmoothTime;
+                float rotationSpeed = _input.crouch ? CrouchRotationTime : RotationSmoothTime;
                 
                 float rotation = Mathf.SmoothDampAngle(transform.eulerAngles.y, _targetRotation, ref _rotationVelocity,
                     rotationSpeed);
